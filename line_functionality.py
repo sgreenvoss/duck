@@ -1,4 +1,4 @@
-f = open("duck_lines.txt", "r")
+f = open("models not mine/duck_lines.txt", "r")
 duck_lines = []
 
 

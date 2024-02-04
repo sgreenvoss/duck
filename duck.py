@@ -13,7 +13,7 @@ t = td.Turtle()
 #prob should pass a turtle in rather than have global turtle accessed by this
 # TODO add turtle param
 class Shape():
-    def __init__(self, data, color_scheme, scale_factor):
+    def __init__(self, data, color_scheme, scale_factor, turtle):
         self.points = []
         for i in range(len(data["points"])):
             self.points.append(Point(data["points"][i], i + 1))
@@ -22,6 +22,7 @@ class Shape():
 
         self.lines = data["lines"]
         self.faces = data["faces"]
+        self.t = turtle
 
     def rotate(self, axis, angle):
         """axis:int, 0 = x, 1 = y, 2 = z"""
@@ -41,27 +42,27 @@ class Shape():
         for p in self.points:
             t.setposition(p.get_x() * self.scale_factor, p.get_y() * self.scale_factor)
             size, color = self.scale_points(p.get_z())
-            t.dot(size, self.color_scheme[color])
+            self.t.dot(size, self.color_scheme[color])
 
     def draw_lines(self):
         for line in self.lines:
             point = self.points[line[0] - 1]
             self.recolor_line(point)
             self.go_to_scaled_x_y(point)
-            t.pendown()
+            self.t.pendown()
             new_point = self.points[line[1] - 1]
             self.go_to_scaled_x_y(new_point)
-            t.penup()
+            self.t.penup()
 
     def draw_faces(self):
 
         for line in self.faces:
-            t.fillcolor(line[-1])
-            t.begin_fill()
+            self.t.fillcolor(line[-1])
+            self.t.begin_fill()
             for item in line[:-1]:
                 point = self.points[item - 1]
                 self.go_to_scaled_x_y(point)
-            t.end_fill()
+            self.t.end_fill()
 
 
     def scale_points(self, z):
@@ -74,49 +75,49 @@ class Shape():
 
     def recolor_line(self, point):
         size, color = self.scale_points(point.get_z())
-        t.pensize(size)
-        t.pencolor(self.color_scheme[color])
+        self.t.pensize(size)
+        self.t.pencolor(self.color_scheme[color])
 
     def go_to_scaled_x_y(self, point):
-        t.setposition(point.get_x() * self.scale_factor, point.get_y() * self.scale_factor)
+        self.t.setposition(point.get_x() * self.scale_factor, point.get_y() * self.scale_factor)
 
     def crx(self):
-        t.clear()
+        self.t.clear()
         self.rotate(0, m.pi / 6)
         self.draw_points()
         self.draw_lines()
         self.draw_faces()
 
     def rx(self):
-        t.clear()
+        self.t.clear()
         self.rotate(0, - m.pi / 6)
         self.draw_points()
         self.draw_lines()
         self.draw_faces()
 
     def crz(self):
-        t.clear()
+        self.t.clear()
         self.rotate(2, m.pi / 6)
         self.draw_points()
         self.draw_lines()
         self.draw_faces()
 
     def rz(self):
-        t.clear()
+        self.t.clear()
         self.rotate(2, - m.pi / 6)
         self.draw_points()
         self.draw_lines()
         self.draw_faces()
 
     def ry(self):
-        t.clear()
+        self.t.clear()
         self.rotate(1, m.pi / 6)
         self.draw_points()
         self.draw_lines()
         self.draw_faces()
 
     def cry(self):
-        t.clear()
+        self.t.clear()
         self.rotate(1, - m.pi / 6)
         self.draw_points()
         self.draw_lines()
@@ -182,7 +183,7 @@ cubestruct = [
 screen = td.Screen()
 screen.tracer(0)
 data = f.get_data()
-Duck = Shape(data, PINKS, 400)
+Duck = Shape(data, PINKS, 400, t)
 
 screen.update()
 

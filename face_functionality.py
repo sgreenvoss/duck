@@ -1,4 +1,4 @@
-f = open("duck.txt", "r")
+f = open("models not mine/duck.txt", "r")
 faces = []
 lines = []
 points = []
