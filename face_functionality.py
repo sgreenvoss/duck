@@ -1,11 +1,9 @@
-f = open("models not mine/duck.txt", "r")
-faces = []
-lines = []
-points = []
+def get_data(filename):
+    faces = []
+    lines = []
+    points = []
+    f = open(filename, "r")
 
-#TODO: organize file structure so user doesn't have to look at this one
-
-def get_data():
     color = "black" #set as default
     for l in f.readlines():
         l = l.split()
