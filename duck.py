@@ -8,43 +8,64 @@ GREENS = ["DarkSeaGreen1", "DarkSeaGreen3", "DarkSeaGreen4"]
 BLUES = ["DarkSlateGray1", "DarkSlateGray3", "DarkSlateGrey"]
 PINKS = ["DeepPink", "DeepPink3", "DeepPink4"]
 
-t = td.Turtle()
+TRANSLATE_AMT = 0.05
+ROTATE_AMT = m.pi / 6
 
-#prob should pass a turtle in rather than have global turtle accessed by this
-# TODO add turtle param
+
 class Shape():
-    def __init__(self, data, color_scheme, scale_factor, turtle):
+    def __init__(self, data, color_scheme, p=False, l=True, f=False, scale_factor=100, turtle=td.Turtle()):
         self.points = []
         for i in range(len(data["points"])):
             self.points.append(Point(data["points"][i], i + 1))
         self.scale_factor = scale_factor
         self.color_scheme = color_scheme
+        self.l = l
+        self.f = f
+        self.p = p
+        
+        if self.l:
+            self.lines = data["lines"]
+        if self.f:
+            self.faces = data["faces"]
 
-        self.lines = data["lines"]
-        self.faces = data["faces"]
         self.t = turtle
 
-    def rotate(self, axis, angle):
-        """axis:int, 0 = x, 1 = y, 2 = z"""
+    def draw(self):
+        self.t.clear()
+        self.t.penup()
+        if self.p:
+            self.draw_points()
+        if self.l:
+            self.draw_lines()
+        if self.f:
+            self.draw_faces()
+
+    
+
+    def rotate(self, axis, sign):
+        """axis:str, x, y, z
+            sign: int, 1, -1"""
         match axis:
-            case 0:
+            case 'x':
                 for p in self.points:
-                    p.x_rotate(angle)
-            case 1:
+                    p.x_rotate(ROTATE_AMT)
+            case 'y':
                 for p in self.points:
-                    p.y_rotate(angle)
-            case 2:
+                    p.y_rotate(ROTATE_AMT)
+            case 'z':
                 for p in self.points:
-                    p.z_rotate(angle)
+                    p.z_rotate(ROTATE_AMT)
+        self.draw()
 
     def draw_points(self):
-        t.penup()
         for p in self.points:
-            t.setposition(p.get_x() * self.scale_factor, p.get_y() * self.scale_factor)
+            self.t.setposition(p.get_x() * self.scale_factor, p.get_y() * self.scale_factor)
             size, color = self.scale_points(p.get_z())
             self.t.dot(size, self.color_scheme[color])
 
     def draw_lines(self):
+        self.t.penup()
+        self.t.hideturtle()
         for line in self.lines:
             point = self.points[line[0] - 1]
             self.recolor_line(point)
@@ -55,16 +76,22 @@ class Shape():
             self.t.penup()
 
     def draw_faces(self):
-
+        self.t.penup()
+        self.t.hideturtle()
         for line in self.faces:
             self.t.fillcolor(line[-1])
-            self.t.begin_fill()
-            for item in line[:-1]:
+            start = True
+            for item in line[:-1]: 
                 point = self.points[item - 1]
                 self.go_to_scaled_x_y(point)
+                if start:
+                    self.t.begin_fill()
+                    start = False
             self.t.end_fill()
 
 
+# dupid magic numebrs here
+# TODO: fix
     def scale_points(self, z):
         if z > 0.5:
             return 6, 0
@@ -81,57 +108,37 @@ class Shape():
     def go_to_scaled_x_y(self, point):
         self.t.setposition(point.get_x() * self.scale_factor, point.get_y() * self.scale_factor)
 
-    def crx(self):
+    
+    def translate(self, axis:str, sign:int):
+        """
+        axis: 'x' or 'y'
+        sign: + or - 1
+        """
         self.t.clear()
-        self.rotate(0, m.pi / 6)
-        self.draw_points()
-        self.draw_lines()
-        self.draw_faces()
-
-    def rx(self):
-        self.t.clear()
-        self.rotate(0, - m.pi / 6)
-        self.draw_points()
-        self.draw_lines()
-        self.draw_faces()
-
-    def crz(self):
-        self.t.clear()
-        self.rotate(2, m.pi / 6)
-        self.draw_points()
-        self.draw_lines()
-        self.draw_faces()
-
-    def rz(self):
-        self.t.clear()
-        self.rotate(2, - m.pi / 6)
-        self.draw_points()
-        self.draw_lines()
-        self.draw_faces()
-
-    def ry(self):
-        self.t.clear()
-        self.rotate(1, m.pi / 6)
-        self.draw_points()
-        self.draw_lines()
-        self.draw_faces()
-
-    def cry(self):
-        self.t.clear()
-        self.rotate(1, - m.pi / 6)
-        self.draw_points()
-        self.draw_lines()
-        self.draw_faces()
+        match axis:
+            case 'x':
+                for point in self.points:
+                    point.x += TRANSLATE_AMT * sign
+            case 'y':
+                for point in self.points:
+                    point.y += TRANSLATE_AMT * sign
+        self.draw()
 
     def set_listeners(self):
         screen.listen()
 
-        td.onkey(self.rx, "Down")
-        td.onkey(self.crx, "Up")
-        td.onkey(self.crz, "z")
-        td.onkey(self.rz, "x")
-        td.onkey(self.ry, "Right")
-        td.onkey(self.cry, "Left")
+        td.onkey(lambda: self.rotate('x', -1), "Down")
+        td.onkey(lambda:self.rotate('x', 1), "Up")
+        td.onkey(lambda: self.rotate('z', 1), "z")
+        td.onkey(lambda: self.rotate('z', -1), "x")
+        td.onkey(lambda: self.rotate('y', 1), "Right")
+        td.onkey(lambda: self.rotate('y', -1), "Left")
+
+        td.onkey(lambda: self.translate('y', -1), "j")
+        td.onkey(lambda: self.translate('y', 1), "u")
+        td.onkey(lambda: self.translate('x', 1), "k")
+        td.onkey(lambda: self.translate('x', -1), "h")
+
 
 
 class Point():
@@ -167,23 +174,15 @@ class Point():
         self.x = x * m.cos(angle) - y * m.sin(angle)
         self.y = x * m.sin(angle) + y * m.cos(angle)
         self.z = z
+    
 
 
-cubestruct = [
-    [-1, 1, 1],
-    [-1, -1, 1],
-    [1, 1, 1],
-    [1, -1, 1],
-    [-1, 1, -1],
-    [-1, -1, -1],
-    [1, 1, -1],
-    [1, -1, -1]
-]
+
 
 screen = td.Screen()
 screen.tracer(0)
-data = f.get_data()
-Duck = Shape(data, PINKS, 400, t)
+data = f.get_data("models-not-mine/duck.txt")
+Duck = Shape(data, BLUES, scale_factor=400, l=False, f=True)
 
 screen.update()
 
