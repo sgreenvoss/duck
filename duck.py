@@ -9,26 +9,51 @@ BLUES = ["DarkSlateGray1", "DarkSlateGray3", "DarkSlateGrey"]
 PINKS = ["DeepPink", "DeepPink3", "DeepPink4"]
 
 TRANSLATE_AMT = 0.05
-ROTATE_AMT = m.pi / 6
+ROTATE_AMT = m.pi / 45
 
 
 class Shape():
-    def __init__(self, data, color_scheme, p=False, l=True, f=False, scale_factor=100, turtle=td.Turtle()):
-        self.points = []
+    def __init__(self, data, color_scheme, p=False, l=True, f=False, scale_factor=100, turtle=td.Turtle(), initd=(0, 0), show=True):
+        self.points = {}
         for i in range(len(data["points"])):
-            self.points.append(Point(data["points"][i], i + 1))
+            self.points[i + 1] = Point(data["points"][i])
+            # print(f"{i}, {self.points[i]}")
+
         self.scale_factor = scale_factor
         self.color_scheme = color_scheme
         self.l = l
         self.f = f
         self.p = p
+        self.sorted_pts = sorted(self.points, key=self.points.get)
+        # print(self.points)
         
-        if self.l:
-            self.lines = data["lines"]
+        self.lines = data["lines"]
         if self.f:
-            self.faces = data["faces"]
-
+            faceinfo = data["faces"]
+            self.faces = {}
+            for i in range(len(faceinfo) - 1):
+                pointlist = [self.points[j] for j in faceinfo[i][:-1]]
+                pointlist.append(faceinfo[i][-1])
+                # print(pointlist)
+                self.faces[i] = Face(pointlist)
+           
+            # print("FACES:", self.faces)
+        if initd:
+            for point in self.points.values():
+                point.dx += initd[0] * TRANSLATE_AMT
+                point.dy += initd[1] * TRANSLATE_AMT
         self.t = turtle
+
+        if show:
+            self.draw()
+            
+        
+    
+    def re_sort_faces(self):
+        self.sorted_faces = sorted(self.faces.values())
+        
+        # print(self.sorted_faces)
+
 
     def draw(self):
         self.t.clear()
@@ -47,42 +72,54 @@ class Shape():
             sign: int, 1, -1"""
         match axis:
             case 'x':
-                for p in self.points:
-                    p.x_rotate(ROTATE_AMT)
+                for v in self.points.values():
+                    v.x_rotate(ROTATE_AMT * sign)
             case 'y':
-                for p in self.points:
-                    p.y_rotate(ROTATE_AMT)
+                for v in self.points.values():
+                    v.y_rotate(ROTATE_AMT * sign)
             case 'z':
-                for p in self.points:
-                    p.z_rotate(ROTATE_AMT)
+                for v in self.points.values():
+                    v.z_rotate(ROTATE_AMT * sign)
         self.draw()
 
+    def find_center(self):
+        s_x = s_y = s_z = 0
+        ln = len(self.points)
+        for v in self.points.values():
+            s_x += v.get_x()
+            s_y += v.get_y()
+            s_z += v.get_z()
+        self.center = s_x / ln, s_y / ln, s_z / ln
+        
+
     def draw_points(self):
-        for p in self.points:
-            self.t.setposition(p.get_x() * self.scale_factor, p.get_y() * self.scale_factor)
-            size, color = self.scale_points(p.get_z())
+        for v in self.points.values():
+            self.t.setposition((v.get_x() + v.dx) * self.scale_factor, (v.get_y() + v.dy) * self.scale_factor)
+            size, color = self.scale_points(v.get_z())
             self.t.dot(size, self.color_scheme[color])
 
     def draw_lines(self):
         self.t.penup()
         self.t.hideturtle()
         for line in self.lines:
-            point = self.points[line[0] - 1]
+            point = self.points[line[0]]
             self.recolor_line(point)
             self.go_to_scaled_x_y(point)
             self.t.pendown()
-            new_point = self.points[line[1] - 1]
+            new_point = self.points[line[1]]
             self.go_to_scaled_x_y(new_point)
             self.t.penup()
 
     def draw_faces(self):
         self.t.penup()
         self.t.hideturtle()
-        for line in self.faces:
-            self.t.fillcolor(line[-1])
+        self.re_sort_faces()
+        # print("\n\n\nNEW:")
+        for face in self.sorted_faces: # self.sorted_faces?
+            # print("face:", face)
+            self.t.fillcolor(face.color)
             start = True
-            for item in line[:-1]: 
-                point = self.points[item - 1]
+            for point in face.pts: 
                 self.go_to_scaled_x_y(point)
                 if start:
                     self.t.begin_fill()
@@ -106,7 +143,7 @@ class Shape():
         self.t.pencolor(self.color_scheme[color])
 
     def go_to_scaled_x_y(self, point):
-        self.t.setposition(point.get_x() * self.scale_factor, point.get_y() * self.scale_factor)
+        self.t.setposition((point.dx + point.get_x()) * self.scale_factor, (point.dy + point.get_y()) * self.scale_factor)
 
     
     def translate(self, axis:str, sign:int):
@@ -117,11 +154,11 @@ class Shape():
         self.t.clear()
         match axis:
             case 'x':
-                for point in self.points:
-                    point.x += TRANSLATE_AMT * sign
+                for v in self.points.values():
+                    v.dx += TRANSLATE_AMT * sign
             case 'y':
-                for point in self.points:
-                    point.y += TRANSLATE_AMT * sign
+                for v in self.points.values():
+                    v.dy += TRANSLATE_AMT * sign
         self.draw()
 
     def set_listeners(self):
@@ -142,11 +179,18 @@ class Shape():
 
 
 class Point():
-    def __init__(self, lyst, i):
+    def __init__(self, lyst):
         self.x = lyst[0]
         self.y = lyst[1]
         self.z = lyst[2]
-        self.index = i
+        self.dx = 0
+        self.dy = 0
+
+    def __repr__(self):
+        return f"Point({self.x}, {self.y}, {self.z})"
+
+    def __gt__(self, other):
+        return self.z > other.z
 
     def get_x(self):
         return self.x
@@ -174,18 +218,42 @@ class Point():
         self.x = x * m.cos(angle) - y * m.sin(angle)
         self.y = x * m.sin(angle) + y * m.cos(angle)
         self.z = z
+
+class Face():
+    def __init__(self, points_col):
+        # points_col is a list of Point objects
+        # print("this is points_col:", points_col)
+        self.pts = []
+        avgz = 0
+        for point in points_col[:-1]:
+            self.pts.append(point)
+            avgz += point.z
+        self.average_z = avgz / (len(points_col) - 1)
+        self.color = points_col[-1]
+        # print("COLOR: ", self.color)
+
+    def __gr__(self, other):
+        return self.average_z < other.average_z
     
+    def __lt__(self, other):
+        return self.average_z > other.average_z
 
+    def __repr__(self):
+        return f"Face(average z: {self.average_z})"
+        
+def main():
+    screen = td.Screen()
+    screen.tracer(0)
+    data = f.get_data("models-not-mine/duck.txt")
+    turt = td.Turtle()
+    Duck = Shape(data, BLUES, scale_factor=400, l=False, f=True, initd=(1, 1))
+    Duck2 = Shape(data, PINKS, scale_factor=300, initd=(-5, 4), turtle=turt)
 
+    screen.update()
 
+    Duck.set_listeners()
 
-screen = td.Screen()
-screen.tracer(0)
-data = f.get_data("models-not-mine/duck.txt")
-Duck = Shape(data, BLUES, scale_factor=400, l=False, f=True)
+    td.mainloop()
 
-screen.update()
-
-Duck.set_listeners()
-
-td.mainloop()
+if __name__ == '__main__':
+    main()
